@@ -1,126 +1,185 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>TIMBER Score Calculator</title>
-
-  <style>
-    body {
-      font-family: Arial, sans-serif;
-      background-color: #f4f4f4;
-      text-align: center;
-      padding: 20px;
-      margin: 0;
-    }
-
-    h2 {
-      margin-bottom: 20px;
-    }
-
-    .container {
-      max-width: 400px;
-      margin: auto;
-      background: white;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-
-    input {
-      width: 100%;
-      padding: 10px;
-      margin: 8px 0;
-      font-size: 16px;
-      box-sizing: border-box;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      margin-top: 10px;
-      font-size: 16px;
-      background-color: #2e86de;
-      color: white;
-      border: none;
-      border-radius: 5px;
-    }
-
-    button:hover {
-      background-color: #1b4f72;
-    }
-  </style>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TIMBER Score Tracker</title>
+<style>
+body {
+  font-family: Arial, sans-serif;
+  background-color: #f4f4f4;
+  padding: 20px;
+  text-align: center;
+}
+.container {
+  max-width: 600px;
+  margin: auto;
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+input, select, button {
+  width: 100%;
+  padding: 10px;
+  margin: 6px 0;
+  font-size: 16px;
+  box-sizing: border-box;
+}
+button {
+  background-color: #2e86de;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button:hover { background-color: #1b4f72; }
+table { width: 100%; border-collapse: collapse; margin-top: 20px;}
+th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+th { background-color: #2e86de; color: white; }
+.eliminated { color: red; font-weight: bold; }
+.winner { color: green; font-weight: bold; font-size: 18px; }
+</style>
 </head>
-
 <body>
 
 <div class="container">
-  <h2>TIMBER Score Calculator</h2>
+<h2>TIMBER Score Tracker</h2>
 
-  <input id="p1" placeholder="Player 1 name">
-  <input id="p2" placeholder="Player 2 name">
-  <input id="p3" placeholder="Player 3 name">
+<label for="numPlayers">Number of Players</label>
+<select id="numPlayers" onchange="createPlayerInputs()">
+  <option value="2">2 Players</option>
+  <option value="3" selected>3 Players</option>
+  <option value="4">4 Players</option>
+  <option value="5">5 Players</option>
+  <option value="6">6 Players</option>
+  <option value="7">7 Players</option>
+  <option value="8">8 Players</option>
+</select>
 
-  <button onclick="startGame()">Start Game</button>
+<div id="playerNamesDiv"></div>
+<button onclick="startGame()">Start Game</button>
 
-  <div id="gameArea"></div>
+<div id="gameArea"></div>
 </div>
 
 <script>
-let totals = [0,0,0];
+let totals = [];
 let round = 1;
 let playerNames = [];
+let numPlayers = 3;
+let eliminated = [];
+let scoreHistory = [];
+
+function createPlayerInputs() {
+  numPlayers = parseInt(document.getElementById('numPlayers').value);
+  const div = document.getElementById('playerNamesDiv');
+  div.innerHTML = '';
+  for (let i = 0; i < numPlayers; i++) {
+    const input = document.createElement('input');
+    input.placeholder = `Player ${i+1} name`;
+    input.id = `p${i}`;
+    div.appendChild(input);
+  }
+}
+
+createPlayerInputs();
 
 function startGame() {
-  playerNames = [
-    document.getElementById("p1").value,
-    document.getElementById("p2").value,
-    document.getElementById("p3").value
-  ];
+  playerNames = [];
+  totals = [];
+  eliminated = [];
+  scoreHistory = [];
+  round = 1;
 
-  document.getElementById("gameArea").innerHTML = `
-    <hr>
-    <h3>Round ${round}</h3>
-    <input type="number" id="s0" placeholder="${playerNames[0]} score">
-    <input type="number" id="s1" placeholder="${playerNames[1]} score">
-    <input type="number" id="s2" placeholder="${playerNames[2]} score">
-    <button onclick="addRound()">Add Round</button>
-    <h3>Totals</h3>
-    <p id="totals"></p>
-  `;
+  for(let i=0;i<numPlayers;i++){
+    let name = document.getElementById(`p${i}`).value.trim();
+    if(!name) name = `Player ${i+1}`;
+    playerNames.push(name);
+    totals.push(0);
+    eliminated.push(false);
+  }
 
-  showTotals();
+  renderRoundInput();
+  renderTable();
 }
 
-function addRound() {
-  let s0 = parseInt(document.getElementById("s0").value) || 0;
-  let s1 = parseInt(document.getElementById("s1").value) || 0;
-  let s2 = parseInt(document.getElementById("s2").value) || 0;
+function renderRoundInput(){
+  let html = `<hr><h3>Round ${round}</h3>`;
+  for(let i=0;i<numPlayers;i++){
+    if(eliminated[i]){
+      html += `<p><strong class="eliminated">${playerNames[i]} is eliminated</strong></p>`;
+    } else {
+      html += `<input type="number" id="s${i}" placeholder="${playerNames[i]} score" min="0">`;
+    }
+  }
+  html += `<button onclick="addRound()">Add Round</button>`;
+  document.getElementById('gameArea').innerHTML = html;
+}
 
-  totals[0] += s0;
-  totals[1] += s1;
-  totals[2] += s2;
+function addRound(){
+  const roundScores = [];
+  for(let i=0;i<numPlayers;i++){
+    if(eliminated[i]){
+      roundScores.push('-');
+      continue;
+    }
+
+    let val = parseInt(document.getElementById(`s${i}`).value) || 0;
+    totals[i] += val;
+
+    // Instant halve at 50 or 100
+    if(totals[i] === 50 || totals[i] === 100){
+      totals[i] = Math.floor(totals[i]/2);
+      alert(`${playerNames[i]}'s total reached ${totals[i]*2} and is halved to ${totals[i]}`);
+    }
+
+    // Eliminate if >100
+    if(totals[i] > 100){
+      eliminated[i] = true;
+      alert(`${playerNames[i]} eliminated!`);
+    }
+
+    roundScores.push(val);
+  }
+
+  scoreHistory.push(roundScores);
+
+  // Check winner
+  const remaining = playerNames.filter((_,i)=>!eliminated[i]);
+  if(remaining.length === 1){
+    alert(`${remaining[0]} is the winner! 🎉`);
+    document.getElementById('gameArea').innerHTML = `<h2 class="winner">${remaining[0]} WINS THE GAME! 🎉</h2>`;
+    renderTable();
+    return;
+  }
 
   round++;
-
-  document.getElementById("gameArea").innerHTML = `
-    <hr>
-    <h3>Round ${round}</h3>
-    <input type="number" id="s0" placeholder="${playerNames[0]} score">
-    <input type="number" id="s1" placeholder="${playerNames[1]} score">
-    <input type="number" id="s2" placeholder="${playerNames[2]} score">
-    <button onclick="addRound()">Add Round</button>
-    <h3>Totals</h3>
-    <p id="totals"></p>
-  `;
-
-  showTotals();
+  renderRoundInput();
+  renderTable();
 }
 
-function showTotals() {
-  document.getElementById("totals").innerHTML =
-    `${playerNames[0]} : ${totals[0]} <br>
-     ${playerNames[1]} : ${totals[1]} <br>
-     ${playerNames[2]} : ${totals[2]}`;
+function renderTable(){
+  let html = `<table><thead><tr><th>Round</th>`;
+  for(let i=0;i<numPlayers;i++){
+    html += `<th>${playerNames[i]}</th>`;
+  }
+  html += `</tr></thead><tbody>`;
+
+  for(let r=0;r<scoreHistory.length;r++){
+    html += `<tr><td>${r+1}</td>`;
+    for(let i=0;i<numPlayers;i++){
+      let val = scoreHistory[r][i];
+      html += `<td>${val}</td>`;
+    }
+    html += `</tr>`;
+  }
+  html += `</tbody><tfoot><tr><th>Total</th>`;
+  for(let i=0;i<numPlayers;i++){
+    html += `<th>${totals[i]} ${eliminated[i]?'<span class="eliminated">(Eliminated)</span>':''}</th>`;
+  }
+  html += `</tr></tfoot></table>`;
+
+  document.getElementById('gameArea').innerHTML += html;
 }
 </script>
 
