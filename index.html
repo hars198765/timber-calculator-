@@ -1,56 +1,128 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>TIMBER Score Calculator</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+      text-align: center;
+      padding: 20px;
+      margin: 0;
+    }
+
+    h2 {
+      margin-bottom: 20px;
+    }
+
+    .container {
+      max-width: 400px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      font-size: 16px;
+      box-sizing: border-box;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      font-size: 16px;
+      background-color: #2e86de;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+
+    button:hover {
+      background-color: #1b4f72;
+    }
+  </style>
 </head>
+
 <body>
+
+<div class="container">
   <h2>TIMBER Score Calculator</h2>
 
-  <input id="p1" placeholder="Player 1 name" />
-  <input id="p2" placeholder="Player 2 name" />
-  <input id="p3" placeholder="Player 3 name" />
+  <input id="p1" placeholder="Player 1 name">
+  <input id="p2" placeholder="Player 2 name">
+  <input id="p3" placeholder="Player 3 name">
+
   <button onclick="startGame()">Start Game</button>
 
-  <div id="game"></div>
+  <div id="gameArea"></div>
+</div>
 
-  <script>
-    let players = [];
-    let scores = [];
+<script>
+let totals = [0,0,0];
+let round = 1;
+let playerNames = [];
 
-    function startGame() {
-      players = [
-        document.getElementById("p1").value,
-        document.getElementById("p2").value,
-        document.getElementById("p3").value
-      ];
-      scores = [0,0,0];
+function startGame() {
+  playerNames = [
+    document.getElementById("p1").value,
+    document.getElementById("p2").value,
+    document.getElementById("p3").value
+  ];
 
-      document.getElementById("game").innerHTML = `
-        <h3>Enter Round Scores</h3>
-        ${players.map((p,i) => `<input id="r${i}" placeholder="${p} score" />`).join("")}
-        <button onclick="addRound()">Add Round</button>
-        <h4>Totals</h4>
-        <div id="totals"></div>
-      `;
+  document.getElementById("gameArea").innerHTML = `
+    <hr>
+    <h3>Round ${round}</h3>
+    <input type="number" id="s0" placeholder="${playerNames[0]} score">
+    <input type="number" id="s1" placeholder="${playerNames[1]} score">
+    <input type="number" id="s2" placeholder="${playerNames[2]} score">
+    <button onclick="addRound()">Add Round</button>
+    <h3>Totals</h3>
+    <p id="totals"></p>
+  `;
 
-      showTotals();
-    }
+  showTotals();
+}
 
-    function addRound() {
-      players.forEach((p,i) => {
-        let val = parseInt(document.getElementById("r"+i).value) || 0;
-        scores[i] += val;
-        document.getElementById("r"+i).value = ""; // clear input
-      });
-      showTotals();
-    }
+function addRound() {
+  let s0 = parseInt(document.getElementById("s0").value) || 0;
+  let s1 = parseInt(document.getElementById("s1").value) || 0;
+  let s2 = parseInt(document.getElementById("s2").value) || 0;
 
-    function showTotals() {
-      document.getElementById("totals").innerHTML =
-        players.map((p,i) =>
-          `<div>${p} : ${scores[i]}</div>`
-        ).join("");
-    }
-  </script>
+  totals[0] += s0;
+  totals[1] += s1;
+  totals[2] += s2;
+
+  round++;
+
+  document.getElementById("gameArea").innerHTML = `
+    <hr>
+    <h3>Round ${round}</h3>
+    <input type="number" id="s0" placeholder="${playerNames[0]} score">
+    <input type="number" id="s1" placeholder="${playerNames[1]} score">
+    <input type="number" id="s2" placeholder="${playerNames[2]} score">
+    <button onclick="addRound()">Add Round</button>
+    <h3>Totals</h3>
+    <p id="totals"></p>
+  `;
+
+  showTotals();
+}
+
+function showTotals() {
+  document.getElementById("totals").innerHTML =
+    `${playerNames[0]} : ${totals[0]} <br>
+     ${playerNames[1]} : ${totals[1]} <br>
+     ${playerNames[2]} : ${totals[2]}`;
+}
+</script>
+
 </body>
 </html>
