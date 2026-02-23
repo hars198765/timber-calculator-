@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>TIMBER Score Calculator</title>
+</head>
+<body>
+  <h2>TIMBER Score Calculator</h2>
+
+  <input id="p1" placeholder="Player 1 name" />
+  <input id="p2" placeholder="Player 2 name" />
+  <input id="p3" placeholder="Player 3 name" />
+  <button onclick="startGame()">Start Game</button>
+
+  <div id="game"></div>
+
+  <script>
+    let players = [];
+    let scores = [];
+
+    function startGame() {
+      players = [
+        document.getElementById("p1").value,
+        document.getElementById("p2").value,
+        document.getElementById("p3").value
+      ];
+      scores = [0,0,0];
+
+      document.getElementById("game").innerHTML = `
+        <h3>Enter Round Scores</h3>
+        ${players.map((p,i) => `<input id="r${i}" placeholder="${p} score" />`).join("")}
+        <button onclick="addRound()">Add Round</button>
+        <h4>Totals</h4>
+        <div id="totals"></div>
+      `;
+
+      showTotals();
+    }
+
+    function addRound() {
+      players.forEach((p,i) => {
+        let val = parseInt(document.getElementById("r"+i).value) || 0;
+        scores[i] += val;
+        document.getElementById("r"+i).value = ""; // clear input
+      });
+      showTotals();
+    }
+
+    function showTotals() {
+      document.getElementById("totals").innerHTML =
+        players.map((p,i) =>
+          `<div>${p} : ${scores[i]}</div>`
+        ).join("");
+    }
+  </script>
+</body>
+</html>
