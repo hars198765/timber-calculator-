@@ -33,12 +33,55 @@ button {
   cursor: pointer;
 }
 button:hover { background-color: #1b4f72; }
-#resetBtn { background-color: #e74c3c; display: none; margin-bottom: 20px;} /* hidden initially */
+#resetBtn { background-color: #e74c3c; display: none; margin-bottom: 20px;} 
+#historyBtn { background-color: #f39c12; margin-bottom: 20px;}
+#historyBtn:hover { background-color: #d68910; }
+
 table { width: 100%; border-collapse: collapse; margin-top: 20px;}
 th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
 th { background-color: #2e86de; color: white; }
 .eliminated { color: red; font-weight: bold; }
 .winner { color: green; font-weight: bold; font-size: 18px; }
+
+/* Modal (Dialog Box) CSS */
+.modal {
+  display: none; 
+  position: fixed; 
+  z-index: 10; 
+  left: 0; 
+  top: 0; 
+  width: 100%; 
+  height: 100%; 
+  background-color: rgba(0,0,0,0.6); 
+}
+.modal-content {
+  background-color: #fff;
+  margin: 10% auto;
+  padding: 20px;
+  border-radius: 10px;
+  width: 90%;
+  max-width: 500px;
+  text-align: left;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+.close {
+  color: #aaa;
+  float: right;
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+}
+.close:hover { color: black; }
+.history-item {
+  background: #f9f9f9;
+  border: 1px solid #ddd;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+.history-item:hover { background: #eef; border-color: #2e86de; }
 </style>
 </head>
 
@@ -48,6 +91,8 @@ th { background-color: #2e86de; color: white; }
 <h2>TIMBER Score Tracker</h2>
 
 <div id="setupArea">
+  <button id="historyBtn" onclick="openHistoryModal()">📂 View Game History</button>
+  <hr>
   <label for="numPlayers">Number of Players</label>
   <select id="numPlayers" onchange="createPlayerInputs()">
     <option value="2">2 Players</option>
@@ -60,12 +105,19 @@ th { background-color: #2e86de; color: white; }
   </select>
 
   <div id="playerNamesDiv"></div>
-  <button onclick="startGame()">Start Game</button>
+  <button onclick="startGame()">Start New Game</button>
 </div>
 
-<button id="resetBtn" onclick="resetGame()">Reset Game / Start New Game</button>
-
+<button id="resetBtn" onclick="resetGame()">Start Fresh / Exit Game</button>
 <div id="gameArea"></div>
+</div>
+
+<div id="historyModal" class="modal">
+  <div class="modal-content">
+    <span class="close" onclick="closeHistoryModal()">&times;</span>
+    <h2>Saved Games History</h2>
+    <div id="historyList"></div>
+  </div>
 </div>
 
 <script>
@@ -75,10 +127,19 @@ let playerNames = [];
 let numPlayers = 3;
 let eliminated = [];
 let scoreHistory = [];
+let currentGameId = null; // Har game ko unique ID dene ke liye
 
-// LocalStorage mein game data save karne ka function
 function saveGameState() {
+  let history = JSON.parse(localStorage.getItem('timberGameHistoryList')) || [];
+  
+  // Agar naya game hai toh current timestamp ko ID banao
+  if (!currentGameId) {
+    currentGameId = new Date().getTime();
+  }
+
   const gameState = {
+    id: currentGameId,
+    date: new Date().toLocaleString(),
     totals: totals,
     round: round,
     playerNames: playerNames,
@@ -86,7 +147,16 @@ function saveGameState() {
     eliminated: eliminated,
     scoreHistory: scoreHistory
   };
-  localStorage.setItem('timberGameState', JSON.stringify(gameState));
+
+  // Check karo agar ye game pehle se history mein hai toh update karo, warna naya add karo
+  const existingIndex = history.findIndex(g => g.id === currentGameId);
+  if (existingIndex !== -1) {
+    history[existingIndex] = gameState;
+  } else {
+    history.push(gameState);
+  }
+
+  localStorage.setItem('timberGameHistoryList', JSON.stringify(history));
 }
 
 function createPlayerInputs() {
@@ -101,10 +171,11 @@ function createPlayerInputs() {
   }
 }
 
-function startGame() {
-  document.getElementById('setupArea').style.display = 'none'; // Setup hide karo
-  document.getElementById('resetBtn').style.display = 'block'; // Reset dikhao
+// Page load hone par input boxes banao
+createPlayerInputs();
 
+function startGame() {
+  currentGameId = null; // Naya game start ho raha hai, toh ID reset
   playerNames = [];
   totals = [];
   eliminated = [];
@@ -119,7 +190,10 @@ function startGame() {
     eliminated.push(false);
   }
 
-  saveGameState(); // Game start hote hi save kar lo
+  document.getElementById('setupArea').style.display = 'none';
+  document.getElementById('resetBtn').style.display = 'block';
+
+  saveGameState(); // Game save karo
   renderRoundInput();
   renderTable();
 }
@@ -148,35 +222,31 @@ function addRound(){
     let val = parseInt(document.getElementById(`s${i}`).value) || 0;
     totals[i] += val;
 
-    // Instant halve at 50 or 100
     if(totals[i] === 50 || totals[i] === 100){
       totals[i] = Math.floor(totals[i]/2);
       alert(`${playerNames[i]}'s total reached ${totals[i]*2} and is halved to ${totals[i]}`);
     }
 
-    // Eliminate if >100
     if(totals[i] > 100){
       eliminated[i] = true;
       alert(`${playerNames[i]} eliminated!`);
     }
-
     roundScores.push(val);
   }
 
   scoreHistory.push(roundScores);
 
-  // Check winner
   const remaining = playerNames.filter((_,i)=>!eliminated[i]);
   if(remaining.length === 1){
     alert(`${remaining[0]} is the winner! 🎉`);
     document.getElementById('gameArea').innerHTML = `<h2 class="winner">${remaining[0]} WINS THE GAME! 🎉</h2>`;
     renderTable();
-    saveGameState(); // Winner declare hone ke baad bhi state save karo
+    saveGameState();
     return;
   }
 
   round++;
-  saveGameState(); // Har round ke baad score save karo
+  saveGameState(); // Round ke baad save karo
   renderRoundInput();
   renderTable();
 }
@@ -205,41 +275,63 @@ function renderTable(){
   document.getElementById('gameArea').innerHTML += html;
 }
 
-// Reset function
 function resetGame(){
-  if(confirm("Are you sure you want to reset and start a new game?")) {
-    localStorage.removeItem('timberGameState'); // Memory se game delete karo
-    totals = [];
-    round = 1;
-    playerNames = [];
-    eliminated = [];
-    scoreHistory = [];
+  if(confirm("Do you want to exit the current game and go to the main menu? (Progress is saved in History)")) {
+    currentGameId = null;
     document.getElementById('gameArea').innerHTML = '';
-    
-    // UI wapas default pe laao
     document.getElementById('setupArea').style.display = 'block'; 
     document.getElementById('resetBtn').style.display = 'none'; 
-    createPlayerInputs();
   }
 }
 
-// Page load hone par check karein ki koi saved game hai ya nahi
-window.onload = function() {
-  const savedState = localStorage.getItem('timberGameState');
-  if (savedState) {
-    // Purana game mil gaya
-    const gameState = JSON.parse(savedState);
-    totals = gameState.totals;
-    round = gameState.round;
-    playerNames = gameState.playerNames;
-    numPlayers = gameState.numPlayers;
-    eliminated = gameState.eliminated;
-    scoreHistory = gameState.scoreHistory;
+// ---- Modal / History Functions ----
 
+function openHistoryModal() {
+  let history = JSON.parse(localStorage.getItem('timberGameHistoryList')) || [];
+  let listDiv = document.getElementById('historyList');
+  listDiv.innerHTML = '';
+
+  if (history.length === 0) {
+    listDiv.innerHTML = '<p>No saved games found. Play a game first!</p>';
+  } else {
+    // Sabse naya game sabse upar dikhane ke liye reverse()
+    history.slice().reverse().forEach(game => {
+      let div = document.createElement('div');
+      div.className = 'history-item';
+      div.innerHTML = `
+        <strong>Started/Played:</strong> ${game.date} <br>
+        <strong>Players:</strong> ${game.playerNames.join(', ')} <br>
+        <strong>Rounds Played:</strong> ${game.round - 1}
+      `;
+      // Click karne par purana game load ho jayega
+      div.onclick = () => loadGameFromHistory(game.id);
+      listDiv.appendChild(div);
+    });
+  }
+  document.getElementById('historyModal').style.display = 'block';
+}
+
+function closeHistoryModal() {
+  document.getElementById('historyModal').style.display = 'none';
+}
+
+function loadGameFromHistory(id) {
+  let history = JSON.parse(localStorage.getItem('timberGameHistoryList')) || [];
+  let game = history.find(g => g.id === id);
+  
+  if(game) {
+    currentGameId = game.id;
+    totals = game.totals;
+    round = game.round;
+    playerNames = game.playerNames;
+    numPlayers = game.numPlayers;
+    eliminated = game.eliminated;
+    scoreHistory = game.scoreHistory;
+
+    closeHistoryModal(); // Dialog box band karo
     document.getElementById('setupArea').style.display = 'none';
     document.getElementById('resetBtn').style.display = 'block';
 
-    // Dekhein ki game already khatam toh nahi ho gaya tha
     const remaining = playerNames.filter((_,i)=>!eliminated[i]);
     if(remaining.length === 1){
       document.getElementById('gameArea').innerHTML = `<h2 class="winner">${remaining[0]} WINS THE GAME! 🎉</h2>`;
@@ -248,11 +340,16 @@ window.onload = function() {
       renderRoundInput();
       renderTable();
     }
-  } else {
-    // Naya game setup karo
-    createPlayerInputs();
   }
-};
+}
+
+// Background pe click karne par bhi modal band ho jaye
+window.onclick = function(event) {
+  let modal = document.getElementById('historyModal');
+  if (event.target == modal) {
+    modal.style.display = "none";
+  }
+}
 </script>
 
 </body>
