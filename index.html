@@ -33,6 +33,7 @@ button {
   cursor: pointer;
 }
 button:hover { background-color: #1b4f72; }
+#resetBtn { background-color: #e74c3c; display: none; margin-bottom: 20px;} /* hidden initially */
 table { width: 100%; border-collapse: collapse; margin-top: 20px;}
 th, td { border: 1px solid #ddd; padding: 8px; text-align: center; }
 th { background-color: #2e86de; color: white; }
@@ -40,24 +41,29 @@ th { background-color: #2e86de; color: white; }
 .winner { color: green; font-weight: bold; font-size: 18px; }
 </style>
 </head>
+
 <body>
 
 <div class="container">
 <h2>TIMBER Score Tracker</h2>
 
-<label for="numPlayers">Number of Players</label>
-<select id="numPlayers" onchange="createPlayerInputs()">
-  <option value="2">2 Players</option>
-  <option value="3" selected>3 Players</option>
-  <option value="4">4 Players</option>
-  <option value="5">5 Players</option>
-  <option value="6">6 Players</option>
-  <option value="7">7 Players</option>
-  <option value="8">8 Players</option>
-</select>
+<div id="setupArea">
+  <label for="numPlayers">Number of Players</label>
+  <select id="numPlayers" onchange="createPlayerInputs()">
+    <option value="2">2 Players</option>
+    <option value="3" selected>3 Players</option>
+    <option value="4">4 Players</option>
+    <option value="5">5 Players</option>
+    <option value="6">6 Players</option>
+    <option value="7">7 Players</option>
+    <option value="8">8 Players</option>
+  </select>
 
-<div id="playerNamesDiv"></div>
-<button onclick="startGame()">Start Game</button>
+  <div id="playerNamesDiv"></div>
+  <button onclick="startGame()">Start Game</button>
+</div>
+
+<button id="resetBtn" onclick="resetGame()">Reset Game / Start New Game</button>
 
 <div id="gameArea"></div>
 </div>
@@ -69,6 +75,19 @@ let playerNames = [];
 let numPlayers = 3;
 let eliminated = [];
 let scoreHistory = [];
+
+// LocalStorage mein game data save karne ka function
+function saveGameState() {
+  const gameState = {
+    totals: totals,
+    round: round,
+    playerNames: playerNames,
+    numPlayers: numPlayers,
+    eliminated: eliminated,
+    scoreHistory: scoreHistory
+  };
+  localStorage.setItem('timberGameState', JSON.stringify(gameState));
+}
 
 function createPlayerInputs() {
   numPlayers = parseInt(document.getElementById('numPlayers').value);
@@ -82,9 +101,10 @@ function createPlayerInputs() {
   }
 }
 
-createPlayerInputs();
-
 function startGame() {
+  document.getElementById('setupArea').style.display = 'none'; // Setup hide karo
+  document.getElementById('resetBtn').style.display = 'block'; // Reset dikhao
+
   playerNames = [];
   totals = [];
   eliminated = [];
@@ -99,6 +119,7 @@ function startGame() {
     eliminated.push(false);
   }
 
+  saveGameState(); // Game start hote hi save kar lo
   renderRoundInput();
   renderTable();
 }
@@ -150,10 +171,12 @@ function addRound(){
     alert(`${remaining[0]} is the winner! 🎉`);
     document.getElementById('gameArea').innerHTML = `<h2 class="winner">${remaining[0]} WINS THE GAME! 🎉</h2>`;
     renderTable();
+    saveGameState(); // Winner declare hone ke baad bhi state save karo
     return;
   }
 
   round++;
+  saveGameState(); // Har round ke baad score save karo
   renderRoundInput();
   renderTable();
 }
@@ -181,6 +204,55 @@ function renderTable(){
 
   document.getElementById('gameArea').innerHTML += html;
 }
+
+// Reset function
+function resetGame(){
+  if(confirm("Are you sure you want to reset and start a new game?")) {
+    localStorage.removeItem('timberGameState'); // Memory se game delete karo
+    totals = [];
+    round = 1;
+    playerNames = [];
+    eliminated = [];
+    scoreHistory = [];
+    document.getElementById('gameArea').innerHTML = '';
+    
+    // UI wapas default pe laao
+    document.getElementById('setupArea').style.display = 'block'; 
+    document.getElementById('resetBtn').style.display = 'none'; 
+    createPlayerInputs();
+  }
+}
+
+// Page load hone par check karein ki koi saved game hai ya nahi
+window.onload = function() {
+  const savedState = localStorage.getItem('timberGameState');
+  if (savedState) {
+    // Purana game mil gaya
+    const gameState = JSON.parse(savedState);
+    totals = gameState.totals;
+    round = gameState.round;
+    playerNames = gameState.playerNames;
+    numPlayers = gameState.numPlayers;
+    eliminated = gameState.eliminated;
+    scoreHistory = gameState.scoreHistory;
+
+    document.getElementById('setupArea').style.display = 'none';
+    document.getElementById('resetBtn').style.display = 'block';
+
+    // Dekhein ki game already khatam toh nahi ho gaya tha
+    const remaining = playerNames.filter((_,i)=>!eliminated[i]);
+    if(remaining.length === 1){
+      document.getElementById('gameArea').innerHTML = `<h2 class="winner">${remaining[0]} WINS THE GAME! 🎉</h2>`;
+      renderTable();
+    } else {
+      renderRoundInput();
+      renderTable();
+    }
+  } else {
+    // Naya game setup karo
+    createPlayerInputs();
+  }
+};
 </script>
 
 </body>
